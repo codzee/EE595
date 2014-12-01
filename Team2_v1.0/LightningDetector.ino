@@ -7,33 +7,6 @@ byte SPItransfer(byte sendByte);
 
 AS3935 AS3935(SPItransfer,SS,2);
 
-// Pinout settings
-#define PINS_LCD_LED         6 //(digital pin)
-#define PINS_LCD_RS          3 //(digital pin)
-#define PINS_LCD_ENABLE      4 //(digital pin)
-#define PINS_LCD_DB4         5 //(digital pin)
-#define PINS_LCD_DB5         6  //(digital pin)
-#define PINS_LCD_DB6         7  //(digital pin)
-#define PINS_LCD_DB7         8  //(digital pin)
-#define PINS_RIGHT           A5  //(digital pin)
-#define PINS_LEFT            A2  //(digital pin)
-#define PINS_UP              A3
-#define PINS_DOWN            A4
-
-LiquidCrystal lcd(PINS_LCD_RS, PINS_LCD_ENABLE, PINS_LCD_DB4, PINS_LCD_DB5, PINS_LCD_DB6, PINS_LCD_DB7);
-
-void setup()
-{
-  Serial.begin(9600);
-  
-  setupSPI();
-  
-  setupAS3935(); 
-}
-
-void loop() {}
-
-
 byte SPItransfer(byte sendByte)
 {
   return SPI.transfer(sendByte);
@@ -50,6 +23,12 @@ void AS3935Irq()
     if (strokeDistance == 1) 
     {  
       Serial.println("Storm overhead, watch out!");
+      
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Storm Overhead  ");
+      lcd.setCursor(0,1);
+      lcd.print("Watch Out!      ");   
     }
     
     if (strokeDistance < 63 && strokeDistance > 1)
@@ -57,6 +36,13 @@ void AS3935Irq()
       Serial.print("Lightning detected ");
       Serial.print(strokeDistance,DEC);
       Serial.println(" kilometers away.");
+      
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Lightning Found ");
+      lcd.setCursor(0,1);
+      lcd.print(strokeDistance,DEC);
+      lcd.print(" kilometers   "); 
     }
   }
 }

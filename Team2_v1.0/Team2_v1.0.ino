@@ -5,8 +5,6 @@
 #include <LiquidCrystal.h> // For LCD Display use 
 #include <EEPROM.h>        // For persistent config 
 
-
-
 // Valid values:
 // - SENSOR_TYPE_AUDIO
 // - SENSOR_TYPE_LIGHT
@@ -38,18 +36,18 @@
 
 // Pinout settings
 #define PINS_LCD_LED         6 //(digital pin)
-#define PINS_LCD_RS          5 //(digital pin)
+#define PINS_LCD_RS          3 //(digital pin)
 #define PINS_LCD_ENABLE      4 //(digital pin)
-#define PINS_LCD_DB4         3 //(digital pin)
-#define PINS_LCD_DB5         9  //(digital pin)
-#define PINS_LCD_DB6         8  //(digital pin)
-#define PINS_LCD_DB7         7  //(digital pin)
-#define PINS_BTN_A           3  //(digital pin)
-#define PINS_BTN_B           2  //(digital pin)
-#define PINS_UP              
-#define PINS_DOWN
+#define PINS_LCD_DB4         5 //(digital pin)
+#define PINS_LCD_DB5         6  //(digital pin)
+#define PINS_LCD_DB6         7  //(digital pin)
+#define PINS_LCD_DB7         8  //(digital pin)
+#define PINS_RIGHT           A5  //(digital pin)
+#define PINS_LEFT            A2  //(digital pin)
+#define PINS_UP              A3
+#define PINS_DOWN            A4
 
-#define PINS_SENSOR_MIC      3  //(analog pin)
+#define PINS_SENSOR_MIC      0 //(analog pin)
 #define PINS_SENSOR_PHOTO_D  1  //(analog pin)
 
 // Sensor types
@@ -82,15 +80,11 @@
 #define KEY_NONE             0 // No keys pressed
 #define KEY_UP               1 // Button A was pressed
 #define KEY_DOWN             2 // Button B was pressed
-#define KEY_BACK             3 // Button A was pressed and held (KEY_HOLD_TIME) milisecons
-#define KEY_SELECT           4 // Button B was pressed and held (KEY_HOLD_TIME) milisecons
-#define KEY_SBH              5 // Buttons A+B was pressed and holded (KEY_HOLD_TIME) milisecons
-
+#define KEY_RIGHT            3 // Button A was pressed and held (KEY_HOLD_TIME) milisecons
+#define KEY_LEFT             4 // Button B was pressed and held (KEY_HOLD_TIME) milisecons
 
 // Keyboard times
-#define KEY_DEBOUNCE_TIME    30 // debounce time (ms) to prevent flickering when pressing or releasing the button
-#define KEY_HOLD_TIME       400 // holding period (ms) how long to wait for press+hold event
-#define KEY_HOLD_TIME_WAIT  100 // Used for double key holding
+#define KEY_DEBOUNCE_TIME   250 // debounce time (ms) to prevent flickering when pressing or releasing the button
 
 // Characters and symbols addresses on lcd eeprom
 #define SYMBOL_DOWN         0x00 // Down arrow
@@ -113,13 +107,11 @@
 #define EE_ADDR_sensorTriggerMode_sensorAudioLimit   0x32 // WORD
 #define EE_ADDR_sensorTriggerMode_sensorLightLimit   0x34 // WORD
 
-
 // LiquidCrystal LCD control object instance
 LiquidCrystal lcd(PINS_LCD_RS, PINS_LCD_ENABLE, PINS_LCD_DB4, PINS_LCD_DB5, PINS_LCD_DB6, PINS_LCD_DB7);
 
 // Variables used on interrupt mode
 volatile boolean cancelFlag = false;    // Flag used to abort interrupt mode
-
 
 // Global variables
 byte         lastKey = KEY_NONE;        // Last key pressed
@@ -130,17 +122,16 @@ byte         lastProgressBarValue = 0;  // Last value of progress bar
 byte         system_sensorTuningMode;
 byte         system_devicePortType;
 
-
 // Sensor trigger mode config in ram
 byte         sensorTriggerMode_sensorType;
 unsigned int sensorTriggerMode_sensorAudioLimit;
 unsigned int sensorTriggerMode_sensorLightLimit;
 
-
 const prog_char PROGMEM MSG_BLUETOOTH_PAIR[] =                    "Pair Bluetooth";
 const prog_char PROGMEM MSG_CAPTURE_TEST[] =                      "Capture Test";
-const prog_char PROGMEM MSG_NAME[] =                            "   Team2 v";
-const prog_char PROGMEM MSG_READY[] =                             "Push Any Button";
+const prog_char PROGMEM MSG_MFG_TEST[] =                          "MFG Test";
+const prog_char PROGMEM MSG_NAME[] =                            "   TEAM2 V";
+const prog_char PROGMEM MSG_READY[] =                             "PUSH ANY BUTTON";
 const prog_char PROGMEM MSG_MAIN_MENU[] =                         "Main Menu";
 const prog_char PROGMEM MSG_SETTINGS[] =                          "Settings";
 const prog_char PROGMEM MSG_SENSOR_TRIGGER[] =                    "Sensor Trigger";
@@ -173,11 +164,28 @@ const prog_char PROGMEM MSG_SENSOR_TYPE_AUDIO[] =                 "Sound";
 const prog_char PROGMEM MSG_SENSOR_TYPE_LIGHT[] =                 "Light";
 const prog_char PROGMEM MSG_SENSOR_TYPE_LIGHTNING[] =             "Lightning";
 
+int lastButtonUpState = LOW;   // the previous reading from the Enter input pin
+int lastButtonDownState = LOW;   // the previous reading from the Esc input pin
+int lastButtonLeftState = LOW;   // the previous reading from the Left input pin
+int lastButtonRightState = LOW;   // the previous reading from the Right input pin
+
+
+long lastUpDebounceTime = 0;  // the last time the output pin was toggled
+long lastDownDebounceTime = 0;  // the last time the output pin was toggled
+long lastLeftDebounceTime = 0;  // the last time the output pin was toggled
+long lastRightDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 500;    // the debounce time
 
 // Setups at startup
 void setup() {
   
-  // Create custom LCD symbols
+  Serial.begin(9600);
+  
+  setupSPI();
+  
+  setupAS3935(); 
+  
+  // Create custom LCD symbolsm
   byte char_arrow_down[8] = {B00000, B00100, B00100, B00100, B00100, B10101, B01110, B00100};
   byte char_arrow_up[8]   = {B00100, B01110, B10101, B00100, B00100, B00100, B00100, B00000};
 
@@ -187,8 +195,10 @@ void setup() {
   lcd.createChar(SYMBOL_UP, char_arrow_up);
 
   // Pinmode inputs
-  pinMode(PINS_BTN_A,          INPUT);     
-  pinMode(PINS_BTN_B,          INPUT);    
+  pinMode(PINS_LEFT,          INPUT);     
+  pinMode(PINS_RIGHT,          INPUT); 
+  pinMode(PINS_UP,          INPUT);     
+  pinMode(PINS_DOWN,          INPUT);   
   pinMode(PINS_SENSOR_MIC,     INPUT);
   pinMode(PINS_SENSOR_PHOTO_D,  INPUT);
 
@@ -199,11 +209,7 @@ void setup() {
   pinMode(PINS_LCD_DB5,        OUTPUT);
   pinMode(PINS_LCD_DB6,        OUTPUT);
   pinMode(PINS_LCD_DB7,        OUTPUT);
-
 }
-
-
-
 
 // Run controller
 void loop(){ 

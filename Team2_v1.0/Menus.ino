@@ -15,7 +15,6 @@ void controller_run(){
    }
 }
 
-
 // Show welcome
 void controller_showWelcome(){
    lcd.clear();
@@ -26,8 +25,6 @@ void controller_showWelcome(){
    lcd.setCursor(0,1);
    display_printMessage(MSG_READY);
 }
-
-
 
 // Main Menu View
 void controller_showMainMenu(){
@@ -45,12 +42,11 @@ void controller_showMainMenu(){
     
     if(lastKey==KEY_UP) circularList_incrementBy(&currentOption, 0, 1, -1);   
     if(lastKey==KEY_DOWN) circularList_incrementBy(&currentOption, 0, 1, 1);        
-    if(lastKey==KEY_BACK) exit = true;
-    if(lastKey==KEY_SELECT) {
+    if(lastKey==KEY_LEFT) exit = true;
+    if(lastKey==KEY_RIGHT) {
                         
         if(currentOption==0) controller_showSensorTriggerMenu();
         if(currentOption==1) controller_showSystemConfig();    
-        
     }
   }
 }
@@ -79,8 +75,8 @@ void controller_showSensorTriggerMenu(){
       
     if(lastKey==KEY_UP) { circularList_incrementBy(&currentOption, 0, 3, -1); }
     if(lastKey==KEY_DOWN) { circularList_incrementBy(&currentOption, 0, 3, 1); }
-    if(lastKey==KEY_BACK) exit = true;
-    if(lastKey==KEY_SELECT) {
+    if(lastKey==KEY_LEFT) exit = true;
+    if(lastKey==KEY_RIGHT) {
                     
            if(currentOption==0)  controller_setSensorType(&sensorTriggerMode_sensorType);
            if(currentOption==1) { runAs_sensorTriggerMode(); }
@@ -104,18 +100,19 @@ void controller_showSystemConfig(){
     if(currentOption==0) { display_printMessage(MSG_SENSOR_TUNING); }
     if(currentOption==1) { display_printMessage(MSG_BLUETOOTH_PAIR); }
     if(currentOption==2) { display_printMessage(MSG_CAPTURE_TEST); }
+    if(currentOption==3) { display_printMessage(MSG_MFG_TEST); }
     
     keyboard_waitForAnyKey();
     
-    if(lastKey==KEY_UP) circularList_incrementBy(&currentOption, 0, 2, -1);
-    if(lastKey==KEY_DOWN) circularList_incrementBy(&currentOption, 0, 2, 1);
-    if(lastKey==KEY_BACK) { config_saveBackup_system(); exit = true; } 
-    if(lastKey==KEY_SELECT) {
+    if(lastKey==KEY_UP) circularList_incrementBy(&currentOption, 0, 3, -1);
+    if(lastKey==KEY_DOWN) circularList_incrementBy(&currentOption, 0, 3, 1);
+    if(lastKey==KEY_LEFT) { config_saveBackup_system(); exit = true; } 
+    if(lastKey==KEY_RIGHT) {
           
-      
-            if(currentOption==0) controller_setSensorTuningMode(&system_sensorTuningMode);
-         // if(currentOption==1) controller_setDevicePortType(&system_devicePortType);
-          
+      if(currentOption==0) controller_setSensorTuningMode(&system_sensorTuningMode);
+      if(currentOption==1) controller_setSensorTuningMode(&system_sensorTuningMode);
+      if(currentOption==2) controller_setSensorTuningMode(&system_sensorTuningMode);
+      if(currentOption==3) controller_setSensorTuningMode(&system_sensorTuningMode);
     }
   }
 }
@@ -125,7 +122,6 @@ void controller_setSensorLimit(byte sensorType){
   
   if(system_sensorTuningMode==SENSOR_TUNING_VISUAL) controller_setSensorLimitVisual(sensorType);
   if(system_sensorTuningMode==SENSOR_TUNING_NUMERIC) controller_setSensorLimitNumeric(sensorType);
-
 }
 
 
@@ -168,15 +164,8 @@ void controller_setSensorLimitVisual(byte sensorType){
              
           if (lastKey==KEY_UP) circularList_incrementBy(sensorLimit, 0, 999, 64);
           if (lastKey==KEY_DOWN) circularList_incrementBy(sensorLimit, 0, 999, -64);
-               
-          if (lastKey == KEY_SBH) {
-
-               if (sensorMode==SENSOR_MODE_HIGHER) circularList_matchBy(sensorLimit, sensorValue, 0, 999, 64);
-               if (sensorMode==SENSOR_MODE_LOWER) circularList_matchBy(sensorLimit, sensorValue, 0, 999, -64);
-           } 
-      
-          
-     } while (lastKey!=KEY_BACK);
+     
+     } while (lastKey!=KEY_LEFT);
 }
 
 // set of sensorlimit in numeric mode
@@ -229,14 +218,6 @@ void controller_setSensorLimitNumeric(byte sensorType){
         
            keyboard_scan();
            
-           if (lastKey == KEY_SBH) {
-               if (sensorMode==SENSOR_MODE_HIGHER) circularList_matchBy(limitValue, sensorValue, 0, 999, 10);
-               if (sensorMode==SENSOR_MODE_LOWER) circularList_matchBy(limitValue, sensorValue, 0, 999, -10);
-                         
-               lcd.setCursor(9,1);
-               display_leadingZeroNumber(*limitValue, 3);
-           } 
-           
            if (lastKey!=KEY_NONE) controller_setUnsignedIntValue(limitValue, &currentPosition, 3, 9, 1);     
           
            if (((sensorMode==SENSOR_MODE_HIGHER && sensorValue >= *limitValue) || (sensorMode==SENSOR_MODE_LOWER  && sensorValue <= *limitValue)) && lastKey==KEY_NONE);// buzzer_beep(100); 
@@ -244,7 +225,7 @@ void controller_setSensorLimitNumeric(byte sensorType){
           
            previousSensorValue = sensorValue;
           
-     } while (lastKey!=KEY_BACK);
+     } while (lastKey!=KEY_LEFT);
      
      lcd.noBlink();
 }
@@ -263,7 +244,7 @@ void controller_setSensorTuningMode(byte *value){
       if (lastKey==KEY_UP) circularList_incrementBy(value, 0, 1, -1);
       if (lastKey==KEY_DOWN) circularList_incrementBy(value, 0, 1, 1);
    
-     } while (lastKey!=KEY_BACK);     
+     } while (lastKey!=KEY_LEFT);     
 }
 
 
@@ -280,8 +261,7 @@ void controller_setSensorType(byte *value){
       if (lastKey==KEY_UP) circularList_incrementBy(value, 0, 4, -1);
       if (lastKey==KEY_DOWN) circularList_incrementBy(value, 0, 4, 1);
    
-     } while (lastKey!=KEY_BACK); 
- 
+     } while (lastKey!=KEY_LEFT); 
 }
 
 // set of numeric parameter value
@@ -305,7 +285,7 @@ void controller_setNumericParameterValue(unsigned int *value, const prog_char* m
        keyboard_scan();
        if (lastKey!=KEY_NONE) controller_setUnsignedIntValue(value, &currentPosition, 5, 0, 1);     
      
-     } while(lastKey!=KEY_BACK);
+     } while(lastKey!=KEY_LEFT);
      
 }
 
@@ -373,9 +353,9 @@ boolean controller_confirmAction(const prog_char* str){
        
       keyboard_waitForAnyKey();
       
-      if (lastKey==KEY_SELECT || lastKey==KEY_BACK) { confirm = !confirm;  };
+      if (lastKey==KEY_RIGHT || lastKey==KEY_LEFT) { confirm = !confirm;  };
    
-     } while (lastKey!=KEY_SELECT);   
+     } while (lastKey!=KEY_RIGHT);   
      
      return confirm;  
 }

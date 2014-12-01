@@ -60,7 +60,8 @@ boolean sensor_waitFor(byte sensorType, unsigned int limitTime){
 
 // Called in interrupt mode when any button is pressed
 void keyboard_interrupts(){
-  if (!digitalRead(PINS_BTN_A)&&!digitalRead(PINS_BTN_B)) cancelFlag = false; 
+  if (!digitalRead(PINS_RIGHT)&&!digitalRead(PINS_LEFT) &&
+      !digitalRead(PINS_UP)&&!digitalRead(PINS_DOWN)) cancelFlag = false; 
   else cancelFlag = true;
 }
 
@@ -69,33 +70,127 @@ void keyboard_scan() {
    keyboard_scan(false);
 }
 
-// Scans keyboard buttons
-void keyboard_scan(boolean quickmode) { 
-
-  unsigned long time = millis();  
+void keyboard_scan(boolean quickmode) {
   
-  if (flagHoldKey && !quickmode) { 
-     
-      while(digitalRead(PINS_BTN_A) || digitalRead(PINS_BTN_B)) {}
-      flagHoldKey = false;
-      lastKey = KEY_NONE; 
-      
-  } else if (digitalRead(PINS_BTN_A)) {
-     while(digitalRead(PINS_BTN_A) && (millis()-time) <= KEY_HOLD_TIME+KEY_HOLD_TIME_WAIT){  
-        if (millis()-time >= KEY_DEBOUNCE_TIME) lastKey = KEY_UP;  
-        if (millis()-time >= KEY_HOLD_TIME) { if(digitalRead(PINS_BTN_B)) lastKey = KEY_SBH; else lastKey = KEY_BACK; flagHoldKey = true; }
-     }
-     
-  } else if (digitalRead(PINS_BTN_B)) {
-     while(digitalRead(PINS_BTN_B) && (millis()-time) <= KEY_HOLD_TIME+KEY_HOLD_TIME_WAIT){  
-        if (millis()-time >= KEY_DEBOUNCE_TIME)  lastKey = KEY_BACK;  
-        if (millis()-time >= KEY_HOLD_TIME) { if(digitalRead(PINS_BTN_A)) lastKey = KEY_SBH; else lastKey = KEY_SELECT; flagHoldKey = true; }
-     }    
-  } else {
-    flagHoldKey = false;
-    lastKey = KEY_NONE;
+  int reading;
+  int buttonUpState=LOW;             // the current reading from the Enter input pin
+  int buttonDownState=LOW;             // the current reading from the input pin
+  int buttonLeftState=LOW;             // the current reading from the input pin
+  int buttonRightState=LOW;             // the current reading from the input pin
+
+  reading = digitalRead(PINS_UP);
+ 
+  if (reading != lastButtonUpState) {
+    // reset the debouncing timer
+    lastUpDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastUpDebounceTime) > KEY_DEBOUNCE_TIME) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonUpState=reading;
+    lastUpDebounceTime=millis();
   }
   
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonUpState = reading;
+  
+  
+  //Down button               
+  // read the state of the switch into a local variable:
+  reading = digitalRead(PINS_DOWN);
+  
+  // check to see if you just pressed the Down button 
+  // (i.e. the input went from LOW to HIGH),  and you've waited 
+  // long enough since the last press to ignore any noise:  
+  
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonDownState) {
+    // reset the debouncing timer
+    lastDownDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastDownDebounceTime) > KEY_DEBOUNCE_TIME) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonDownState = reading;
+    lastDownDebounceTime=millis();
+  }
+  
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonDownState = reading; 
+  
+     
+   //Down button               
+  // read the state of the switch into a local variable:
+  reading = digitalRead(PINS_RIGHT);
+  
+  // check to see if you just pressed the Down button 
+  // (i.e. the input went from LOW to HIGH),  and you've waited 
+  // long enough since the last press to ignore any noise:  
+  
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonRightState) {
+    // reset the debouncing timer
+    lastRightDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastRightDebounceTime) > KEY_DEBOUNCE_TIME) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonRightState = reading;
+   lastRightDebounceTime =millis();
+  }
+  
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonRightState = reading;                  
+  
+  
+  //Up button               
+  // read the state of the switch into a local variable:
+  reading = digitalRead(PINS_LEFT);
+  
+  // check to see if you just pressed the Down button 
+  // (i.e. the input went from LOW to HIGH),  and you've waited 
+  // long enough since the last press to ignore any noise:  
+  
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonLeftState) {
+    // reset the debouncing timer
+    lastLeftDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastLeftDebounceTime) > KEY_DEBOUNCE_TIME) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonLeftState = reading;
+    lastLeftDebounceTime=millis();;
+  }
+  
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonLeftState = reading;  
+  
+  //records which button has been pressed
+  if (buttonUpState==HIGH){
+    lastKey = KEY_UP;
+  
+  }else if(buttonDownState==HIGH){
+    lastKey = KEY_DOWN;
+  
+  }else if(buttonRightState==HIGH){
+    lastKey = KEY_RIGHT;
+  
+  }else if(buttonLeftState==HIGH){
+    lastKey = KEY_LEFT;
+  
+  }else{
+    lastKey = KEY_NONE;
+  }                  
+
 }
 
 // Waits until any key is pressed
